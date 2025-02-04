@@ -123,8 +123,9 @@ try:
     VatPrice,
     TotalPrice,
     Margin,
+    StockLevel,
     Timestamp
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
     
     for table_name, data in table_names.items():
         print(f"Processing table: {table_name}")
@@ -166,3 +167,6 @@ if 'local_cursor' in locals() and local_cursor:
     local_cursor.close()
 if 'local_cnxn' in locals() and local_cnxn:
     local_cnxn.close()
+    
+
+print("czas trwania: ", seconds_sum)

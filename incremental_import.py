@@ -34,8 +34,9 @@ try:
     azure_user = os.environ['azure_user']
     azure_password = os.environ['azure_password']
     azure_db = os.environ['azure_db']
-    
+
 except Exception as e:
+
     with open ('logfile.log', 'a', encoding='utf-8') as file:
         file.write(f"""Problem z wczytywaniem zmiennych środowiskowych - {str(e)}\n""")
     sys.exit(0)
@@ -69,7 +70,7 @@ try:
 except Exception as e:
     with open ('logfile.log', 'a', encoding='utf-8') as file:
         file.write(f"""Problem z połączneiem z baza danych azure - {str(e)}\n""")
-        
+    
 finally:
     if 'azure_cursor' in locals() and azure_cursor:
         print("kursor")

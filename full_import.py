@@ -20,7 +20,7 @@ except Exception as e:
         file.write(f"""Problem z wczytyaniem daty - {str(e)}\n""")
     sys.exit(0)
 
-# Wczytanie zmiennych środowiskowych
+# Wczytanie zmiennych środowiskowych z pliku .env
 try:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     dotenv_path = os.path.join(base_dir, '.env')
@@ -29,7 +29,6 @@ try:
     db_db = os.environ['db_db']
     db_server = os.environ['db_server']
     db_driver = os.environ['db_driver']
-    
     azure_server = os.environ['azure_server']
     azure_user = os.environ['azure_user']
     azure_password = os.environ['azure_password']
@@ -49,35 +48,42 @@ except Exception as e:
     sys.exit(0)
 
 #Połączenie z bazą danych AZURE
-try:
-    azure_conn = pyodbc.connect(
+counter = 1 # Licznik prób połączenia z bazą danych
+while counter < 10:
+    try:
+        azure_conn = pyodbc.connect(
         f'DRIVER={db_driver};'
         f'SERVER=tcp:{azure_server},1433;'
         f'DATABASE={azure_db};'
         f'UID={azure_user};'
         f'PWD={azure_password};'
-        'Encrypt=yes;'               # encryption is required for Azure SQL
-        'TrustServerCertificate=no;' # validate the server certificate
-        'Connection Timeout=30;'
-    )
-    azure_cursor = azure_conn.cursor()
-    
-    cz_data = azure_cursor.execute("SELECT * FROM SalesData_CZ").fetchall()
-    sk_data = azure_cursor.execute("SELECT * FROM SalesData_SK").fetchall()
-    
-    print("Zamykam połączenie z bazą danych")
-except Exception as e:
-    with open ('logfile.log', 'a', encoding='utf-8') as file:
-        file.write(f"""Problem z połączneiem z baza danych azure - {str(e)}\n""")
+        f'Encrypt=yes;'
+        f'TrustServerCertificate=no;'
+        f'Connection Timeout=30;'
+        )
+
+        azure_cursor = azure_conn.cursor()
         
-finally:
-    if 'azure_cursor' in locals() and azure_cursor:
-        print("kursor")
-        azure_cursor.close()
-    if 'azure_conn' in locals() and azure_conn:
-        print("conn")
-        azure_conn.close()
-    print("Połączenie z bazą danych zakończone")
+        cz_data = azure_cursor.execute("SELECT * FROM SalesData_CZ").fetchall()
+        sk_data = azure_cursor.execute("SELECT * FROM SalesData_SK").fetchall()
+        
+        print(f"Zamykam połączenie z bazą danych. Udana próba połączenia: {counter}") 
+        break
+    except Exception as e:
+        print(f"Nieudana próba połączenia: {counter}")
+        with open ('logfile.log', 'a', encoding='utf-8') as file:
+            file.write(f"""{formatDateTime} Problem z połączneiem z baza danych azure próba {counter} - {str(e)}\n""")
+        
+    finally:
+        if 'azure_cursor' in locals() and azure_cursor:
+            print("kursor")
+            azure_cursor.close()
+        if 'azure_conn' in locals() and azure_conn:
+            print("conn")
+            azure_conn.close()
+        print(f"Połączenie z bazą danych zakończone próba {counter}")
+        counter += 1
+        time.sleep(15)
     
 print(len(cz_data))
 print(len(sk_data))
@@ -127,6 +133,16 @@ try:
     Timestamp
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
     
+    try:
+        local_cursor.execute("TRUNCATE TABLE SalesData_CZ")
+        local_cursor.execute("TRUNCATE TABLE SalesData_SK")
+        local_cnxn.commit()
+    except Exception as e:
+        with open ('logfile.log', 'a', encoding='utf-8') as file:
+            file.write(f"""Problem z czyszczeniem tabel lokalnych - {str(e)}\n""")
+            file.write(f"""{formatDateTime} - Import zakończony niepowodzeniem\n""")
+            sys.exit(0)
+    
     for table_name, data in table_names.items():
         print(f"Processing table: {table_name}")
         if data:
@@ -169,4 +185,10 @@ if 'local_cnxn' in locals() and local_cnxn:
     local_cnxn.close()
     
 
-print("czas trwania: ", seconds_sum)
+try:
+    with open ('successfile.log', 'a', encoding='utf-8') as file:
+        file.write(f"""{formatDateTime} - Import zakończony sukcesem za próbą: {counter}\n""")
+        file.write(f"Liczba wierszy w tabeli SalesData_CZ: {len(cz_data)}\n, liczba wierszy w tabeli SalesData_SK: {len(sk_data)}\n")
+except:
+    with open ('logfile.log', 'a', encoding='utf-8') as file:
+        file.write(f"""Problem z zapisaniem do pliku successfile.log - {str(e)}\n""")

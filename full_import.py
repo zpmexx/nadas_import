@@ -97,8 +97,6 @@ except Exception as e:
         file.write(f"""Problem z wczytaniem czasu końcowego - {str(e)}\n""")
 
 
-
-
 # Połączenie z bazą danych lokalną
 try:
     local_cnxn = pyodbc.connect(f"Driver={{ODBC Driver 17 for SQL Server}};Server={db_server};Database={db_db};Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;")
@@ -188,7 +186,7 @@ if 'local_cnxn' in locals() and local_cnxn:
 try:
     with open ('successfile.log', 'a', encoding='utf-8') as file:
         file.write(f"""{formatDateTime} - Import zakończony sukcesem za próbą: {counter}\n""")
-        file.write(f"Liczba wierszy w tabeli SalesData_CZ: {len(cz_data)}\n, liczba wierszy w tabeli SalesData_SK: {len(sk_data)}\n")
+        file.write(f"Liczba wierszy w tabeli SalesData_CZ: {len(cz_data)}, liczba wierszy w tabeli SalesData_SK: {len(sk_data)}\n")
 except:
     with open ('logfile.log', 'a', encoding='utf-8') as file:
         file.write(f"""Problem z zapisaniem do pliku successfile.log - {str(e)}\n""")

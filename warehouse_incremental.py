@@ -40,6 +40,23 @@ except Exception as e:
     with open ('logfile.log', 'a', encoding='utf-8') as file:
         file.write(f"""Problem z wczytywaniem zmiennych środowiskowych - {str(e)}\n""")
     sys.exit(0)
+    
+    
+try:
+    local_cnxn = pyodbc.connect(f"Driver={{ODBC Driver 17 for SQL Server}};Server={db_server};Database={db_db};Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;")
+    local_cursor = local_cnxn.cursor()
+    cz_latest_yearweak = local_cursor.execute("SELECT TOP 1 YearWeek FROM WarehousesData_CZ ORDER BY YearWeek DESC").fetchone()
+    sk_latest_yearweak = local_cursor.execute("SELECT TOP 1 YearWeek FROM WarehousesData_SK ORDER BY YearWeek DESC").fetchone()
+except Exception as e:
+    with open ('logfile.log', 'a', encoding='utf-8') as file:
+        file.write(f"""Problem z połączeniem z baza danych - {str(e)}\n""")
+    sys.exit(0)
+finally:
+    if 'local_cursor' in locals() and local_cursor:
+        local_cursor.close()
+    if 'local_cnxn' in locals() and local_cnxn:
+        local_cnxn.close()
+    
         
 # Rozpoczęcie pomiaru czasu
 try:
@@ -49,20 +66,8 @@ except Exception as e:
         file.write(f"""Problem z wczytaniem czasu początkowego - {str(e)}\n""")
     sys.exit(0)
 
-try:
-    today = date.today()
-
-    iso_year, iso_week, iso_weekday = today.isocalendar()
-
-    if iso_week == 1 and today.month == 1:
-        iso_year -= 1
-    # Tutaj bierze do selecta z db, wiec jak mamy 2025 i 14 tydizeń to powinno być 2025_13
-    week_number = f"{iso_year}_{iso_week-1:02d}"
-except Exception as e:
-    with open ('logfile.log', 'a', encoding='utf-8') as file:
-        file.write(f"""Brak możliwości pobrania danych. Problem z ustawieniem nazwy YearWeak z datatime - {str(e)}\n""")
-    sys.exit(0)    
-
+print(f'cz_latest_yearweak: {cz_latest_yearweak[0]}')
+print(f'sk_latest_yearweak: {sk_latest_yearweak[0]}')
 
 #Połączenie z bazą danych AZURE
 counter = 1 # Licznik prób połączenia z bazą danych
@@ -81,8 +86,8 @@ while counter < 10:
 
         azure_cursor = azure_conn.cursor()
         
-        cz_data = azure_cursor.execute("SELECT * FROM WarehousesData_CZ WHERE YearWeek LIKE ?", (week_number,)).fetchall()
-        sk_data = azure_cursor.execute("SELECT * FROM WarehousesData_SK WHERE YearWeek LIKE ?", (week_number,)).fetchall()
+        cz_data = azure_cursor.execute("SELECT * FROM WarehousesData_CZ WHERE YearWeek > ?", (cz_latest_yearweak[0],)).fetchall()
+        sk_data = azure_cursor.execute("SELECT * FROM WarehousesData_SK WHERE YearWeek > ?", (sk_latest_yearweak[0],)).fetchall()
     
         print(f"Zamykam połączenie z bazą danych. Udana próba połączenia: {counter}") 
         break
@@ -196,3 +201,9 @@ if 'local_cnxn' in locals() and local_cnxn:
     
 
 print("czas trwania: ", seconds_sum)
+
+with open ("susses.log",'a', encoding='utf-8') as file:
+    file.write(f"""{formatDateTime} - Pomyślnie zakończono skrypt\n
+Wgrano {len(cz_data)} wierszy do tabeli WarehousesData_CZ\n
+Wgrano {len(sk_data)} wierszy do tabeli WarehousesData_SK\n
+Czas trwania: {seconds_sum} sekund\n""")

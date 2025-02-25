@@ -202,8 +202,8 @@ if 'local_cnxn' in locals() and local_cnxn:
 
 print("czas trwania: ", seconds_sum)
 
-with open ("susses.log",'a', encoding='utf-8') as file:
-    file.write(f"""{formatDateTime} - Pomyślnie zakończono skrypt\n
-Wgrano {len(cz_data)} wierszy do tabeli WarehousesData_CZ\n
-Wgrano {len(sk_data)} wierszy do tabeli WarehousesData_SK\n
-Czas trwania: {seconds_sum} sekund\n""")
+with open ("success_warehouse_inc.log",'a', encoding='utf-8') as file:
+    file.write(f"""{formatDateTime} - Pomyślnie zakończono skrypt
+Wgrano {len(cz_data)} wierszy do tabeli WarehousesData_CZ
+Wgrano {len(sk_data)} wierszy do tabeli WarehousesData_SK
+Czas trwania (prób) połączenia z azure: {seconds_sum} sekund\n\n""")
